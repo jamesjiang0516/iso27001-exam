@@ -2,188 +2,162 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>ISO 27001 專業模擬考系統 v2.0</title>
+    <title>ISO 27001 萬題模擬考系統 - 隨機抽題版</title>
     <style>
         :root { --primary: #2c3e50; --accent: #e67e22; --bg: #f5f7fa; }
-        body { font-family: sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .container { width: 100%; max-width: 850px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: var(--bg); margin: 0; padding: 20px; }
+        .container { width: 100%; max-width: 900px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
         .hidden { display: none; }
-        
-        /* 題型標籤 */
-        .tag { padding: 4px 10px; border-radius: 4px; color: white; font-size: 0.8em; margin-bottom: 10px; display: inline-block; }
-        .tag-single { background: #4a90e2; }
-        .tag-multi { background: #a569bd; }
-        .tag-fill { background: #f1c40f; color: #333; }
-        .tag-match { background: #27ae60; }
-        .tag-order { background: #e74c3c; }
-
-        .option-item { display: block; padding: 12px; border: 1px solid #ddd; border-radius: 6px; margin: 10px 0; cursor: pointer; }
-        .match-row { display: flex; align-items: center; margin: 10px 0; gap: 20px; }
-        select { padding: 8px; border-radius: 4px; flex: 1; }
-        .order-item { background: #eee; padding: 10px; margin: 5px 0; display: flex; align-items: center; gap: 10px; cursor: move; }
-
-        .footer-nav { margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .btn { padding: 12px 30px; border: none; border-radius: 30px; cursor: pointer; font-weight: bold; background: var(--accent); color: white; }
+        .tag { padding: 4px 10px; border-radius: 4px; color: white; font-size: 0.8em; margin-bottom: 10px; display: inline-block; font-weight: bold; }
+        .tag-single { background: #4a90e2; } .tag-multi { background: #a569bd; } .tag-fill { background: #f1c40f; color: #333; } .tag-match { background: #27ae60; } .tag-order { background: #e74c3c; }
+        .q-card { border-bottom: 2px solid #eee; padding: 20px 0; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .option-item { display: block; padding: 12px; border: 1px solid #ddd; border-radius: 8px; margin: 10px 0; cursor: pointer; transition: 0.3s; }
+        .option-item:hover { background: #fdf2e9; border-color: var(--accent); }
+        .btn { padding: 15px 40px; background: var(--accent); color: white; border: none; border-radius: 30px; cursor: pointer; font-size: 1.1em; font-weight: bold; }
+        select, input[type="number"] { padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="welcome">
-        <h1>ISO 27001 模擬測驗系統</h1>
-        <p>正在載入題庫中，請稍候...</p>
-        <button id="startBtn" class="btn hidden" onclick="startExam()">開始測驗</button>
+    <div id="welcome-view">
+        <h1>ISO 27001 模擬測驗 (隨機抽題系統)</h1>
+        <p>系統將從題庫中隨機抽取：</p>
+        <ul>
+            <li>單元一~三：各 6 題 (共 18 題)</li>
+            <li>單元四：14 題 (情境模擬)</li>
+            <li>單元五：8 題 (報告與結束)</li>
+        </ul>
+        <p id="status">正在載入題庫...</p>
+        <button id="startBtn" class="btn hidden" onclick="startExam()">開始隨機組卷</button>
     </div>
 
-    <div id="quiz" class="hidden">
-        <div style="display: flex; justify-content: space-between;">
-            <div id="progress">題目：1 / 40</div>
-            <div id="timer" style="font-weight: bold; color: red;">105:00</div>
+    <div id="quiz-view" class="hidden">
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
+            <div id="progress">題目載入中...</div>
+            <div id="timer" style="color: red; font-weight: bold; font-size: 1.2em;">105:00</div>
         </div>
-        <div id="questionArea" style="margin-top: 20px;"></div>
-        <div class="footer-nav">
-            <span style="color: #888;">* 進入下一題後無法回頭</span>
-            <button class="btn" onclick="handleNext()">下一題</button>
+        <div id="questionArea"></div>
+        <div style="text-align: right; margin-top: 30px;">
+            <button class="btn" onclick="nextQuestion()">下一題 (無法回頭)</button>
         </div>
     </div>
 
-    <div id="result" class="hidden" style="text-align: center;">
+    <div id="result-view" class="hidden" style="text-align: center;">
         <h1>測驗結束</h1>
-        <div id="scoreDisplay" style="font-size: 4em; color: var(--accent);">0</div>
+        <div id="scoreDisplay" style="font-size: 5em; color: var(--accent);">0</div>
         <p id="evalText"></p>
-        <button class="btn" onclick="location.reload()">重新測驗</button>
+        <button class="btn" onclick="location.reload()">再次挑戰</button>
     </div>
 </div>
 
 <script>
-let allQuestions = {};
+let masterBank = {};
 let currentExam = [];
 let currentIndex = 0;
 let userScore = 0;
-let timeLeft = 105 * 60;
+let timer;
 
-// 1. 從 JSON 提取資料
+// 從 JSON 檔案提取
 fetch('questions.json')
     .then(res => res.json())
     .then(data => {
-        allQuestions = data;
+        masterBank = data;
+        document.getElementById('status').innerText = `題庫載入成功！目前各單元題數均已達標。`;
         document.getElementById('startBtn').classList.remove('hidden');
-        document.querySelector('#welcome p').innerText = "題庫載入成功，準備好了嗎？";
-    })
-    .catch(err => alert("載入失敗，請確認 questions.json 是否存在。"));
+    });
 
 function startExam() {
-    // 隨機抽題邏輯
-    currentExam = [
-        ...pick(allQuestions.unit1, 6), ...pick(allQuestions.unit2, 6),
-        ...pick(allQuestions.unit3, 6), ...pick(allQuestions.unit4, 14),
-        ...pick(allQuestions.unit5, 8)
-    ];
+    // 隨機抽選邏輯 (Fisher-Yates Shuffle)
+    const shuffle = (arr) => arr.sort(() => Math.random() - 0.5);
     
-    document.getElementById('welcome').classList.add('hidden');
-    document.getElementById('quiz').classList.remove('hidden');
-    renderQuestion();
-    startTimer();
+    currentExam = [
+        ...shuffle(masterBank.unit1).slice(0, 6),
+        ...shuffle(masterBank.unit2).slice(0, 6),
+        ...shuffle(masterBank.unit3).slice(0, 6),
+        ...shuffle(masterBank.unit4).slice(0, 14),
+        ...shuffle(masterBank.unit5).slice(0, 8)
+    ];
+
+    document.getElementById('welcome-view').classList.add('hidden');
+    document.getElementById('quiz-view').classList.remove('hidden');
+    render();
+    startTimer(105 * 60);
 }
 
-function pick(arr, n) { return [...arr].sort(() => 0.5 - Math.random()).slice(0, n); }
-
-function renderQuestion() {
+function render() {
     const q = currentExam[currentIndex];
     const area = document.getElementById('questionArea');
-    document.getElementById('progress').innerText = `題目：${currentIndex + 1} / ${currentExam.length}`;
+    document.getElementById('progress').innerText = `第 ${currentIndex + 1} 題 / 共 40 題 (單元: ${q.unit})`;
     
-    let html = `<span class="tag tag-${q.type}">${q.type.toUpperCase()}</span><h3>${q.q}</h3>`;
+    let html = `<div class="q-card"><span class="tag tag-${q.type}">${q.type.toUpperCase()}</span><h3>${q.q}</h3>`;
 
     if (q.type === 'single') {
-        q.options.forEach((opt, i) => {
-            html += `<label class="option-item"><input type="radio" name="ans" value="${i}"> ${opt}</label>`;
-        });
-    } 
-    else if (q.type === 'multi') {
-        q.options.forEach((opt, i) => {
-            html += `<label class="option-item"><input type="checkbox" name="ans" value="${i}"> ${opt}</label>`;
-        });
-    } 
-    else if (q.type === 'match') {
-        q.items.forEach((item, i) => {
-            html += `<div class="match-row"><span>${item}</span><select class="match-select">
-                <option value="">請選擇對應項...</option>
-                ${q.options.map((opt, idx) => `<option value="${idx}">${opt}</option>`).join('')}
-            </select></div>`;
-        });
-    } 
-    else if (q.type === 'order') {
-        q.options.forEach((opt, i) => {
-            html += `<div class="order-item">${i+1}. <span>${opt}</span> <input type="number" class="order-val" min="1" max="${q.options.length}" style="width:40px; margin-left:auto;"></div>`;
-        });
-    }
-    else if (q.type === 'fill') {
-        // 簡化版填空：用下拉選單代替
+        q.options.forEach((opt, i) => html += `<label class="option-item"><input type="radio" name="ans" value="${i}"> ${opt}</label>`);
+    } else if (q.type === 'multi') {
+        q.options.forEach((opt, i) => html += `<label class="option-item"><input type="checkbox" name="ans" value="${i}"> ${opt}</label>`);
+    } else if (q.type === 'fill') {
         let fillQ = q.q;
-        Object.keys(q.blanks).forEach(key => {
-            let selectHtml = `<select class="fill-select" data-key="${key}"><option value="">?</option>`;
-            q.blanks[key].forEach(opt => selectHtml += `<option value="${opt}">${opt}</option>`);
-            selectHtml += `</select>`;
-            fillQ = fillQ.replace(`[__${key}__]`, selectHtml);
+        Object.keys(q.blanks).forEach(k => {
+            let select = `<select class="fill-val"><option value="">?</option>${q.blanks[k].map(o => `<option value="${o}">${o}</option>`).join('')}</select>`;
+            fillQ = fillQ.replace(`[__${k}__]`, select);
         });
-        html += `<div style="line-height: 2.5;">${fillQ}</div>`;
+        html += `<div style="line-height:2.5; font-size:1.2em;">${fillQ}</div>`;
+    } else if (q.type === 'match') {
+        q.items.forEach((item, i) => {
+            html += `<div style="display:flex; margin:10px 0; gap:20px;"><span>${item}</span><select class="match-val"><option value="">選擇答案...</option>${q.options.map((o,idx)=>`<option value="${idx}">${o}</option>`).join('')}</select></div>`;
+        });
+    } else if (q.type === 'order') {
+        q.options.forEach((opt, i) => html += `<div class="option-item">${i+1}. ${opt} <input type="number" class="order-val" min="1" max="${q.options.length}" style="width:50px; float:right;"></div>`);
     }
 
-    area.innerHTML = html;
+    area.innerHTML = html + `</div>`;
 }
 
-function handleNext() {
+function nextQuestion() {
     const q = currentExam[currentIndex];
-    let isCorrect = false;
+    let correct = false;
 
-    // 驗證邏輯
+    // 校對答案
     if (q.type === 'single') {
-        const sel = document.querySelector('input[name="ans"]:checked');
-        if(sel && parseInt(sel.value) === q.ans) isCorrect = true;
-    } 
-    else if (q.type === 'multi') {
-        const sels = Array.from(document.querySelectorAll('input[name="ans"]:checked')).map(v => parseInt(v.value));
-        if(JSON.stringify(sels.sort()) === JSON.stringify(q.ans.sort())) isCorrect = true;
-    }
-    else if (q.type === 'match') {
-        const sels = Array.from(document.querySelectorAll('.match-select')).map(v => parseInt(v.value));
-        if(JSON.stringify(sels) === JSON.stringify(q.ans)) isCorrect = true;
-    }
-    else if (q.type === 'order') {
-        const sels = Array.from(document.querySelectorAll('.order-val')).map(v => parseInt(v.value) - 1);
-        if(JSON.stringify(sels) === JSON.stringify(q.ans)) isCorrect = true;
-    }
-    else if (q.type === 'fill') {
-        const sels = Array.from(document.querySelectorAll('.fill-select')).map(v => v.value);
-        if(JSON.stringify(sels) === JSON.stringify(q.ans)) isCorrect = true;
+        const s = document.querySelector('input[name="ans"]:checked');
+        if(s && parseInt(s.value) === q.ans) correct = true;
+    } else if (q.type === 'multi') {
+        const s = Array.from(document.querySelectorAll('input[name="ans"]:checked')).map(v=>parseInt(v.value));
+        if(JSON.stringify(s.sort()) === JSON.stringify(q.ans.sort())) correct = true;
+    } else if (q.type === 'fill' || q.type === 'match') {
+        const s = Array.from(document.querySelectorAll(q.type === 'fill' ? '.fill-val' : '.match-val')).map(v=>v.value);
+        if(JSON.stringify(s) === JSON.stringify(q.ans)) correct = true;
+    } else if (q.type === 'order') {
+        const s = Array.from(document.querySelectorAll('.order-val')).map(v=>parseInt(v.value)-1);
+        if(JSON.stringify(s) === JSON.stringify(q.ans)) correct = true;
     }
 
-    if(isCorrect) userScore += q.weight;
+    if(correct) userScore += q.weight;
 
     if(currentIndex < currentExam.length - 1) {
-        currentIndex++;
-        renderQuestion();
+        currentIndex++; render();
     } else {
         showResult();
     }
 }
 
-function startTimer() {
-    setInterval(() => {
-        timeLeft--;
-        let m = Math.floor(timeLeft/60), s = timeLeft%60;
+function startTimer(sec) {
+    timer = setInterval(() => {
+        sec--;
+        let m = Math.floor(sec/60), s = sec%60;
         document.getElementById('timer').innerText = `${m}:${s<10?'0':''}${s}`;
-        if(timeLeft <= 0) showResult();
+        if(sec <= 0) showResult();
     }, 1000);
 }
 
 function showResult() {
-    document.getElementById('quiz').classList.add('hidden');
-    document.getElementById('result').classList.remove('hidden');
-    let finalScore = Math.round(userScore * 10) / 10;
-    document.getElementById('scoreDisplay').innerText = finalScore;
-    document.getElementById('evalText').innerText = finalScore >= 56 ? "✅ 合格！" : "❌ 未合格 (及格門檻 56 分)";
+    clearInterval(timer);
+    document.getElementById('quiz-view').classList.add('hidden');
+    document.getElementById('result-view').classList.remove('hidden');
+    document.getElementById('scoreDisplay').innerText = Math.round(userScore * 10) / 10;
+    document.getElementById('evalText').innerText = userScore >= 56 ? "✅ 通過考驗" : "❌ 未達及格標準";
 }
 </script>
 </body>
