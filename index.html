@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISO 27001 模擬測驗系統</title>
+    <style>
+        :root {
+            --primary: #2c3e50; --accent: #e67e22; --bg: #f5f7fa;
+            --success: #27ae60; --danger: #e74c3c;
+        }
+        body { font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; background: var(--bg); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .container { width: 90%; max-width: 800px; background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); position: relative; }
+        
+        /* 歡迎頁面 */
+        #welcome-screen { text-align: left; line-height: 1.8; }
+        .start-btn { display: block; width: 200px; margin: 30px auto 0; padding: 15px; background: var(--accent); color: white; border: none; border-radius: 30px; font-size: 1.2em; cursor: pointer; font-weight: bold; }
+
+        /* 測驗介面 */
+        #quiz-screen { display: none; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .timer { font-size: 1.5em; font-weight: bold; color: var(--danger); }
+        .progress { color: #7f8c8d; }
+
+        .q-card { margin-top: 20px; min-height: 300px; }
+        .tag { padding: 4px 10px; border-radius: 4px; font-size: 0.8em; color: white; background: var(--primary); margin-bottom: 10px; display: inline-block; }
+        .options label { display: block; padding: 15px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .options label:hover { background: #f8f9fa; border-color: var(--accent); }
+        .next-btn { float: right; padding: 12px 40px; background: var(--primary); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; }
+
+        /* 結果頁面 */
+        #result-screen { display: none; text-align: center; }
+        .score-circle { width: 150px; height: 150px; border-radius: 50%; border: 10px solid var(--accent); line-height: 150px; font-size: 3em; margin: 20px auto; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="welcome-screen">
+        <h2 style="text-align: center; color: var(--primary);">ISO 27001 資訊安全管理系統模擬測驗</h2>
+        <hr>
+        <p>歡迎進入測驗。本測驗依照正式考試架構設計：</p>
+        <ul>
+            <li><strong>時間限制：</strong> 1 小時 45 分鐘（全局倒數）。</li>
+            <li><strong>測驗題數：</strong> 共 40 題（單元一~三各 6 題，單元四 14 題，單元五 8 題）。</li>
+            <li><strong>單向進行：</strong> 進入下一題後，無法回到上一題。</li>
+            <li><strong>自動計分：</strong> 滿分 80 分，及格門檻為 70%（56分）。</li>
+        </ul>
+        <table style="width:100%; font-size: 0.9em; background: #f9f9f9; padding: 10px; border-radius: 8px;">
+            <tr><td>單元一~三：每題 1 分</td><td>單元四：每題 3 分</td><td>單元五：每題 2.5 分</td></tr>
+        </table>
+        <button class="start-btn" onclick="startQuiz()">開始測驗</button>
+    </div>
+
+    <div id="quiz-screen">
+        <div class="header">
+            <div class="progress">題目：<span id="current-idx">1</span> / 40</div>
+            <div class="timer" id="timer">105:00</div>
+        </div>
+        <div id="question-content" class="q-card">
+            </div>
+        <button class="next-btn" onclick="nextQuestion()">下一題</button>
+    </div>
+
+    <div id="result-screen">
+        <h2>測驗結束</h2>
+        <div class="score-circle" id="final-score">0</div>
+        <h3 id="pass-status">計算中...</h3>
+        <p id="detail-text"></p>
+        <button class="start-btn" onclick="location.reload()">重新挑戰</button>
+    </div>
+</div>
+
+<script>
+// 完整題庫結構 (此處由你同事 PR 擴展至 1000 題)
+const MASTER_BANK = {
+    unit1: [ { q: "ISMS 建立時，必須先確定的事項是？", opt: ["員工名單", "組織全景與範圍", "伺服器規格", "防火牆密碼"], ans: 1, weight: 1 } ],
+    unit2: [ { q: "關於稽核員行為，下列何者正確？", opt: ["應對受稽方保密", "應主動提供解決方案", "可以隨意更改計畫", "不需要查證證據"], ans: 0, weight: 1 } ],
+    unit3: [ { q: "稽核計畫應在何時發送給受稽方？", opt: ["當天早上", "稽核開始前", "結束會議後", "不需發送"], ans: 1, weight: 1 } ],
+    unit4: [ { q: "【情境】發現機房窗戶沒關，且無人監視。這違反了？", opt: ["存取控制", "實體與環境安全", "行動裝置方針", "供應商管理"], ans: 1, weight: 3 } ],
+    unit5: [ { q: "結束會議中，若受稽方不認同稽核發現，應如何處理？", opt: ["當場爭吵", "取消稽核", "記錄爭議事項並持續溝通", "直接開除受稽人員"], ans: 2, weight: 2.5 } ]
+};
+
+// 補足示範題庫以便測試 (隨機產生)
+function fillMock() {
+    ['unit1','unit2','unit3','unit4','unit5'].forEach(u => {
+        let w = (u === 'unit4') ? 3 : (u === 'unit5' ? 2.5 : 1);
+        while(MASTER_BANK[u].length < 20) {
+            MASTER_BANK[u].push({...MASTER_BANK[u][0], q: MASTER_BANK[u][0].q + "(隨機題 " + MASTER_BANK[u].length + ")"});
+        }
+    });
+}
+fillMock();
+
+let quizQuestions = [];
+let currentIdx = 0;
+let userScore = 0;
+let timer;
+
+function startQuiz() {
+    document.getElementById('welcome-screen').style.display = 'none';
+    document.getElementById('quiz-screen').style.display = 'block';
+    
+    // 按比例隨機抽 40 題
+    quizQuestions = [
+        ...pick(MASTER_BANK.unit1, 6), ...pick(MASTER_BANK.unit2, 6),
+        ...pick(MASTER_BANK.unit3, 6), ...pick(MASTER_BANK.unit4, 14),
+        ...pick(MASTER_BANK.unit5, 8)
+    ];
+    
+    renderQuestion();
+    startTimer(105 * 60);
+}
+
+function pick(arr, n) { return arr.sort(() => 0.5 - Math.random()).slice(0, n); }
+
+function renderQuestion() {
+    const q = quizQuestions[currentIdx];
+    const container = document.getElementById('question-content');
+    document.getElementById('current-idx').innerText = currentIdx + 1;
+    
+    container.innerHTML = `
+        <span class="tag">單元：${currentIdx < 18 ? '概念/責任/規劃' : (currentIdx < 32 ? '稽核執行' : '報告/結束')} (分值: ${q.weight})</span>
+        <h3>${q.q}</h3>
+        <div class="options">
+            ${q.opt.map((o, i) => `
+                <label><input type="radio" name="answer" value="${i}"> ${o}</label>
+            `).join('')}
+        </div>
+    `;
+}
+
+function nextQuestion() {
+    const selected = document.querySelector('input[name="answer"]:checked');
+    if (!selected) { alert("請選擇一個答案！"); return; }
+    
+    // 計算分數
+    if (parseInt(selected.value) === quizQuestions[currentIdx].ans) {
+        userScore += quizQuestions[currentIdx].weight;
+    }
+    
+    if (currentIdx < quizQuestions.length - 1) {
+        currentIdx++;
+        renderQuestion();
+    } else {
+        showResult();
+    }
+}
+
+function startTimer(duration) {
+    let timerVal = duration;
+    const display = document.getElementById('timer');
+    timer = setInterval(() => {
+        let mins = Math.floor(timerVal / 60);
+        let secs = timerVal % 60;
+        display.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        if (--timerVal < 0) { clearInterval(timer); showResult(); }
+    }, 1000);
+}
+
+function showResult() {
+    clearInterval(timer);
+    document.getElementById('quiz-screen').style.display = 'none';
+    document.getElementById('result-screen').style.display = 'block';
+    
+    const finalScore = Math.round(userScore * 10) / 10;
+    document.getElementById('final-score').innerText = finalScore;
+    
+    const isPass = finalScore >= 56;
+    document.getElementById('pass-status').innerText = isPass ? "🎉 恭喜通過測驗！" : "❌ 未達合格門檻";
+    document.getElementById('pass-status').style.color = isPass ? "var(--success)" : "var(--danger)";
+    document.getElementById('detail-text').innerText = `您的得分為 ${finalScore} / 80。及格標準為 56 分。`;
+}
+</script>
+</body>
+</html>
